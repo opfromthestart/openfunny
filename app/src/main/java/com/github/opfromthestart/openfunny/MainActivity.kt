@@ -14,12 +14,13 @@ import com.github.opfromthestart.openfunny.ui.theme.OpenFunnyTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        rustInit()
         super.onCreate(savedInstanceState)
         setContent {
             OpenFunnyTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Greeting("Android")
+                    Greeting("ifunny user")
                 }
             }
         }
@@ -29,7 +30,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
-            text = "Hello $name!",
+            text = "AAAA",
             modifier = modifier
     )
 }

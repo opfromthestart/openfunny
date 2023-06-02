@@ -6,6 +6,7 @@ plugins {
 android {
     namespace 'com.github.opfromthestart.openfunny'
     compileSdk 33
+    ndkVersion "25.2.9519653"
 
     defaultConfig {
         applicationId "com.github.opfromthestart.openfunny"
@@ -64,4 +65,26 @@ dependencies {
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
+
+apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
+
+cargo {
+    module  = "../rust"       // Or whatever directory contains your Cargo.toml
+    libname = "rust"          // Or whatever matches Cargo.toml's [package] name.
+    targets = ['arm', "arm64", 'x86', 'linux-x86-64']  // See bellow for a longer list of options
+}
+
+tasks.whenTaskAdded { task ->
+    if ((task.name == 'mergeDebugJniLibFolders' || task.name == 'mergeReleaseJniLibFolders')) {
+        task.dependsOn 'cargoBuild'
+    }
+}
+
+tasks.whenObjectAdded {
+    if ((this.name == "mergeDebugJniLibFolders" || this.name == "mergeReleaseJniLibFolders")) {
+        this.dependsOn("cargoBuild")
+        // fix mergeDebugJniLibFolders  UP-TO-DATE
+        this.inputs.dir(buildDir.resolve("rustJniLibs/android"))
+    }
 }
