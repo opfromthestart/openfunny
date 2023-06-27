@@ -19,6 +19,13 @@ android {
         vectorDrawables {
             useSupportLibrary true
         }
+        ndk.abiFilters 'armeabi-v7a','arm64-v8a','x86','x86_64' // add this line
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/libs']
+        }
     }
 
     buildTypes {
@@ -53,6 +60,7 @@ dependencies {
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.0')
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
     implementation 'androidx.activity:activity-compose:1.5.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
     implementation platform('androidx.compose:compose-bom:2022.10.00')
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-graphics'
@@ -65,6 +73,7 @@ dependencies {
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
+    implementation("io.arrow-kt:arrow-core:1.0.0")
 }
 
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
@@ -72,13 +81,9 @@ apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 cargo {
     module  = "../rust"       // Or whatever directory contains your Cargo.toml
     libname = "rust"          // Or whatever matches Cargo.toml's [package] name.
-    targets = ['arm', "arm64", 'x86', 'linux-x86-64']  // See bellow for a longer list of options
-}
-
-tasks.whenTaskAdded { task ->
-    if ((task.name == 'mergeDebugJniLibFolders' || task.name == 'mergeReleaseJniLibFolders')) {
-        task.dependsOn 'cargoBuild'
-    }
+    targets = ["arm", "x86", "arm64"]  // See bellow for a longer list of options
+    targetIncludes = ['librust.so']
+    targetDirectory = "../rust/target"
 }
 
 tasks.whenObjectAdded {
