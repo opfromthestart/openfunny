@@ -1,21 +1,19 @@
 package com.github.opfromthestart.openfunny
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontLoadingStrategy.Companion.Async
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.asImageBitmap
 import arrow.core.Either
 import com.github.opfromthestart.openfunny.ui.theme.OpenFunnyTheme
-import java.util.concurrent.Callable
 import kotlinx.coroutines.*
-import kotlin.coroutines.CoroutineContext
 
 class MainActivity : ComponentActivity() {
     @OptIn(DelicateCoroutinesApi::class)
@@ -49,6 +47,10 @@ class MainActivity : ComponentActivity() {
                     delay(200)
                 }
 
+                val ba = Scraper.getImage("https://images.nintendolife.com/fc2d0b25ab9ce/zelda-tears-of-the-kingdom-all-zonai-devices-how-to-use-where-to-get-6.large.jpg")
+                val b = BitmapFactory.decodeByteArray(ba, 0, ba.size)
+                val ib = b?.asImageBitmap()
+
                 setContent {
                     OpenFunnyTheme {
                         // A surface container using the 'background' color from the theme
@@ -56,6 +58,11 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
                         ) {
+                            if (ib != null) {
+                                Image(bitmap = ib, contentDescription = "thing")
+                            } else {
+                                Text(text = "e")
+                            }
                             Text(text = html.toString())
                         }
                     }
