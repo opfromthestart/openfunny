@@ -19,6 +19,7 @@ struct IFunnyImage {
     smiles: usize,
     title: String,
     url: String,
+    id: String,
 }
 
 #[derive(Deserialize, Default, Debug)]
@@ -27,9 +28,25 @@ struct IFunnyImages {
     page_count: usize,
     items: Vec<IFunnyImage>,
 }
+#[derive(Deserialize, Default, Debug)]
+struct User {
+    nick: String,
+}
+#[derive(Deserialize, Default, Debug)]
+struct Comment {
+    text: String,
+    user: User,
+}
+
+#[derive(Deserialize, Default, Debug)]
+struct Comments {
+    items: Vec<Comment>,
+}
 
 static IMAGES: Lazy<Mutex<IFunnyImages>> = Lazy::new(|| Mutex::new(IFunnyImages::default()));
 static IMAGEBUFFERS: Lazy<Mutex<HashMap<usize, Vec<u8>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+static COMMENTBUFFERS: Lazy<Mutex<HashMap<usize, Vec<String>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 static HEADER: Lazy<HeaderMap> = Lazy::new(|| {
     let mut h = HeaderMap::new();
@@ -87,6 +104,10 @@ fn as_jobj(s: JString) -> JObject {
     unsafe { JObject::from_raw(s.into_raw()) }
 }
 
+fn as_obj<'a>(s: &str, env: &JNIEnv<'a>) -> JObject<'a> {
+    as_jobj(env.new_string(s).unwrap())
+}
+
 const CALLBACK_SIG: &str = "(Ljava/lang/Object;)Ljava/lang/Object;";
 
 #[no_mangle]
@@ -103,10 +124,10 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_initImages(
         .query(&[("page", 1)])
         .build()
         .unwrap();
-    log!(env, format!("{req:?}"));
+    // log!(env, format!("{req:?}"));
     let json = c.execute(req).unwrap().text().unwrap();
 
-    log!(env, &json);
+    // log!(env, &json);
     let parsed: Result<IFunnyImages, _> = serde_json::from_str(&json);
     if parsed.is_err() {
         log!(env, parsed.unwrap_err().to_string());
@@ -116,7 +137,7 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_initImages(
 
     let u = get_int(&mut env, IMAGES.lock().unwrap().items.len() as i32);
 
-    log!(env, "Main call");
+    // log!(env, "Main call");
 
     match env.call_method(callback, "apply", CALLBACK_SIG, &[JValue::Object(&u)]) {
         Ok(_) => (),
@@ -136,6 +157,30 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_imageCount(
     IMAGES.lock().unwrap().items.len() as i32
 }
 
+fn load_imgs<'a>(ind: usize, env: &mut JNIEnv<'a>) {
+    let c = reqwest::blocking::Client::new();
+    let page = ind / 10 + 1;
+
+    let json = c
+        .get(format!("https://ifunny.co/api/v1/feeds/featured"))
+        .headers(HEADER.clone())
+        .query(&[("page", page)])
+        .send()
+        .unwrap();
+
+    let images: Result<IFunnyImages, _> = serde_json::from_str(&json.text().unwrap());
+    if images.is_err() {
+        log!(env, images.unwrap_err().to_string());
+        return;
+    }
+    let images = images.unwrap();
+    IMAGES
+        .lock()
+        .unwrap()
+        .items
+        .extend(images.items.into_iter())
+}
+
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getImage<'local>(
@@ -147,7 +192,7 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getImage<'loc
     if num < 0 {
         return;
     }
-    log!(env, "anything?");
+    // log!(env, "anything?");
     let ind = num as usize;
     let exists = { IMAGEBUFFERS.lock().unwrap().get(&ind).is_some() };
     let b = if exists {
@@ -161,27 +206,7 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getImage<'loc
             env.byte_array_from_slice(&[]).unwrap()
         } else {
             if cur_img <= ind {
-                let c = reqwest::blocking::Client::new();
-                let page = ind / 10 + 1;
-
-                let json = c
-                    .get("https://ifunny.co/api/v1/feeds/featured")
-                    .headers(HEADER.clone())
-                    .query(&[("page", page)])
-                    .send()
-                    .unwrap();
-
-                let images: Result<IFunnyImages, _> = serde_json::from_str(&json.text().unwrap());
-                if images.is_err() {
-                    log!(env, images.unwrap_err().to_string());
-                    return;
-                }
-                let images = images.unwrap();
-                IMAGES
-                    .lock()
-                    .unwrap()
-                    .items
-                    .extend(images.items.into_iter())
+                load_imgs(ind, &mut env);
             }
             let path = &IMAGES.lock().unwrap().items[ind].url;
             let c = reqwest::blocking::Client::new();
@@ -202,7 +227,7 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getImage<'loc
         }
     };
 
-    log!(env, "pre call??");
+    // log!(env, "pre call??");
 
     match env.call_method(
         callback,
@@ -217,5 +242,115 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getImage<'loc
             log!(env, e.to_string());
         }
     }
-    log!(env, "what??");
+    // log!(env, "what??");
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getComments<'local>(
+    mut env: JNIEnv<'local>,
+    _obj: JObject,
+    num: jint,
+    callback: JObject,
+) {
+    if num < 0 {
+        return;
+    }
+    // log!(env, "anything?");
+    let ind = num as usize;
+    let exists = { COMMENTBUFFERS.lock().unwrap().get(&ind).is_some() };
+    let b = if exists {
+        log!(env, "exists");
+        let items = COMMENTBUFFERS.lock().unwrap().get(&ind).unwrap().len() as i32;
+        let comments = env
+            .new_object_array(items, "java/lang/String", &JObject::null())
+            .unwrap();
+
+        for (i, c) in COMMENTBUFFERS
+            .lock()
+            .unwrap()
+            .get(&ind)
+            .unwrap()
+            .iter()
+            .enumerate()
+        {
+            env.set_object_array_element(&comments, i as i32, as_obj(c, &env))
+                .unwrap();
+        }
+        comments
+    } else {
+        log!(env, "get web");
+        let cur_img = IMAGES.lock().unwrap().items.len();
+        if cur_img + 10 <= ind {
+            env.new_object_array(0, "java/lang/Object", &JObject::null())
+                .unwrap()
+        } else {
+            if cur_img <= ind {
+                load_imgs(ind, &mut env);
+            }
+            let id = IMAGES.lock().unwrap().items[ind].id.clone();
+            let path = format!("https://ifunny.co/api/v1/content/{id}/comments?next=0");
+            log!(env, &path);
+            let c = reqwest::blocking::Client::new();
+            if let Ok(resp) = c.get(path).headers(HEADER.clone()).send() {
+                if let Ok(resp_str) = resp.text() {
+                    log!(env, &resp_str);
+                    let comment: Result<Comments, _> = serde_json::from_str(&resp_str);
+                    if comment.is_err() {
+                        log!(env, format!("{comment:?}"));
+                        return;
+                    }
+                    let comment = comment.unwrap();
+                    COMMENTBUFFERS.lock().unwrap().insert(
+                        ind,
+                        comment
+                            .items
+                            .into_iter()
+                            .map(|c| format!("{}:{}", c.user.nick, c.text))
+                            .collect(),
+                    );
+                    let items = COMMENTBUFFERS.lock().unwrap().get(&ind).unwrap().len() as i32;
+                    let comments = env
+                        .new_object_array(items, "java/lang/String", &JObject::null())
+                        .unwrap();
+
+                    for (i, c) in COMMENTBUFFERS
+                        .lock()
+                        .unwrap()
+                        .get(&ind)
+                        .unwrap()
+                        .iter()
+                        .enumerate()
+                    {
+                        env.set_object_array_element(&comments, i as i32, as_obj(c, &env))
+                            .unwrap();
+                    }
+                    comments
+                } else {
+                    env.new_object_array(0, "java/lang/Object", &JObject::null())
+                        .unwrap()
+                }
+            } else {
+                env.new_object_array(0, "java/lang/Object", &JObject::null())
+                    .unwrap()
+            }
+        }
+    };
+
+    // log!(env, "pre call??");
+
+    match env.call_method(
+        callback,
+        "apply",
+        CALLBACK_SIG,
+        &[JValue::Object(&unsafe { JObject::from_raw(b.into_raw()) })],
+    ) {
+        Ok(_) => {
+            log!(env, "Function good");
+        }
+        Err(e) => {
+            log!(env, e.to_string());
+        }
+    }
+    // log!(env, "what??");
 }

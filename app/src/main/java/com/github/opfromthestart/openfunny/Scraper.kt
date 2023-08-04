@@ -36,4 +36,6 @@ object Scraper {
 
 
     external fun getImage(i: Int, callback: Function<ByteArray, Unit>)
+
+    external fun getComments(i: Int, callback: Function<Array<String>, Unit>)
 }

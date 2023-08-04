@@ -1,5 +1,6 @@
 package com.github.opfromthestart.openfunny
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,12 +10,18 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.FloatRange
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.MaterialTheme
@@ -32,11 +39,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.github.opfromthestart.openfunny.ui.theme.Purple40
 import com.github.opfromthestart.openfunny.ui.theme.Purple80
@@ -127,24 +137,25 @@ fun OpenFunnyMain() {
     }
     if (start) {
         OpenFunnyTheme {
-            // A surface container using the 'background' color from the theme
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colors.background
             ) {
                 Text(text = "iFunny is loading")
             }
         }
     } else {
-        // A surface container using the 'background' color from the theme
+        OpenFunnyTheme() {
+
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colors.background
         ) {
             ImageCarousel()
         }
     }
+    }
 }
+
+val sizePx: Float = MainActivity.bounds.right.toFloat()
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -161,129 +172,131 @@ fun ImageCarousel() {
     var curImg_n: ImageBitmap? by remember {
         mutableStateOf(null)
     }
+    var comments: Array<String> by remember {
+        mutableStateOf(Array(0) { "" })
+    }
 
     val imgs = 1000
+    // println(sizePx)
 
-    val sizePx: Float = MainActivity.bounds.right.toFloat()
-    println(sizePx)
-
-    Log.i(null, "Test ${curInd.currentValue}")
+//    Log.i(null, "Test ${curInd.currentValue}")
     if (curInd.currentValue in 0 until imgs) {
         LaunchedEffect(curInd.currentValue) {
             GlobalScope.async {
                 Scraper.getImage(curInd.currentValue) {
                     Log.i("OpenFunny", "cur img gotten")
                     var b = BitmapFactory.decodeByteArray(it, 0, it.size)
-                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height - 20)
                     val ib = b?.asImageBitmap()
-                    if (curInd.currentValue%3 == 0) {
+                    if (curInd.currentValue % 3 == 0) {
                         curImg = ib
-                    }
-                    else if (curInd.currentValue%3 == 1) {
+                    } else if (curInd.currentValue % 3 == 1) {
                         curImg_n = ib
-                    }
-                    else if (curInd.currentValue%3 == 2) {
+                    } else if (curInd.currentValue % 3 == 2) {
                         curImg_p = ib
                     }
                 }
-                Scraper.getImage(curInd.currentValue+1) {
+                Scraper.getImage(curInd.currentValue + 1) {
                     Log.i("OpenFunny", "cur imgn gotten")
                     var b = BitmapFactory.decodeByteArray(it, 0, it.size)
-                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height - 20)
                     val ib = b?.asImageBitmap()
-                    if (curInd.currentValue%3 == 2) {
+                    if (curInd.currentValue % 3 == 2) {
                         curImg = ib
-                    }
-                    else if (curInd.currentValue%3 == 0) {
+                    } else if (curInd.currentValue % 3 == 0) {
                         curImg_n = ib
-                    }
-                    else if (curInd.currentValue%3 == 1) {
+                    } else if (curInd.currentValue % 3 == 1) {
                         curImg_p = ib
                     }
                 }
-                Scraper.getImage(curInd.currentValue-1) {
+                Scraper.getImage(curInd.currentValue - 1) {
                     Log.i("OpenFunny", "cur imgp gotten")
                     var b = BitmapFactory.decodeByteArray(it, 0, it.size)
-                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height - 20)
                     val ib = b?.asImageBitmap()
-                    if (curInd.currentValue%3 == 1) {
+                    if (curInd.currentValue % 3 == 1) {
                         curImg = ib
-                    }
-                    else if (curInd.currentValue%3 == 2) {
+                    } else if (curInd.currentValue % 3 == 2) {
                         curImg_n = ib
-                    }
-                    else if (curInd.currentValue%3 == 0) {
+                    } else if (curInd.currentValue % 3 == 0) {
                         curImg_p = ib
                     }
+                }
+                Scraper.getComments(curInd.currentValue) {
+                    Log.i("OpenFunny", "comments gotten")
+                    comments = it
                 }
             }
         }
     }
 
-    val posMap = (0 until imgs).map { -it *sizePx to it }.toMap()
+    val posMap = (0 until imgs).associateBy { -it * sizePx }
 
-    if (curImg != null) {
-        if (curImg_p != null && curImg_n != null) {
-            Image(
-                bitmap = curImg_p!!,
-                contentDescription = "thing",
-                modifier = Modifier
-                    .swipeable(
-                        curInd,
-                        posMap,
-                        Orientation.Horizontal
-                    )
-                    .offset {
-                        IntOffset(
-                            ((curInd.offset.value - 2*sizePx) % (3 * sizePx) + sizePx ).toInt(),
-                            0
-                        )
-                    })
-                Image(
-                    bitmap = curImg!!,
-                    contentDescription = "thing",
-                    modifier = Modifier
-                        .swipeable(
-                            curInd,
-                            posMap,
-                            Orientation.Horizontal
-                        )
-                        .offset {
-                            IntOffset(
-                                ((curInd.offset.value - sizePx) % (3 * sizePx) + sizePx).toInt(),
-                                0
-                            )
-                        })
-                Image(
-                    bitmap = curImg_n!!,
-                    contentDescription = "thing",
-                    modifier = Modifier
-                        .swipeable(
-                            curInd,
-                            posMap,
-                            Orientation.Horizontal
-                        )
-                        .offset { IntOffset(((curInd.offset.value ) % (3 * sizePx)+ sizePx).toInt(), 0) })
-
-        } else {
-            val ibv = curImg ?: curImg_n // This guarantees it is not null
-            Image(
-                bitmap = ibv!!,
-                contentDescription = "thing",
-                modifier = Modifier
-                    .swipeable(
-                        curInd,
-                        posMap,
-                        Orientation.Horizontal
-                    )
-                    .offset {
-                        IntOffset(
-                            ((curInd.offset.value ) % sizePx).toInt(),
-                            0
-                        )
-                    })
+    val comment = remember {
+        SwipeableState(false, tween())
+    }
+    val cmap = mapOf(0f to false, -1000f to true)
+    Box(modifier = Modifier
+        .swipeable(
+            curInd,
+            posMap,
+            Orientation.Horizontal
+        )
+        .swipeable(comment, cmap, Orientation.Vertical))
+    IFunnyImage(
+        bitmap = curImg_p,
+        pos = ((curInd.offset.value - 2 * sizePx) % (3 * sizePx) + sizePx).toInt(),
+        map = posMap,
+        swipe = curInd
+    )
+    IFunnyImage(
+        bitmap = curImg,
+        pos = ((curInd.offset.value - sizePx) % (3 * sizePx) + sizePx).toInt(),
+        map = posMap,
+        swipe = curInd
+    )
+    IFunnyImage(
+        bitmap = curImg_n,
+        pos = ((curInd.offset.value) % (3 * sizePx) + sizePx).toInt(),
+        map = posMap,
+        swipe = curInd
+    )
+    var mod =Modifier
+        .background(MaterialTheme.colors.background)
+        .fillMaxWidth()
+        Column(modifier = Modifier.offset {
+        IntOffset(
+            ((curInd.offset.value) % (sizePx)).toInt(),
+            2000 + comment.offset.value.toInt()
+        )
+    }
+        ) {
+        for (i in comments) {
+            Text(
+                i,
+                modifier = mod
+            )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun IFunnyImage(
+    bitmap: ImageBitmap?,
+    pos: Int,
+    swipe: SwipeableState<Int>,
+    map: Map<Float, Int>
+) {
+    if (bitmap != null) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "thing",
+                modifier = Modifier
+                    .offset { IntOffset(pos, 0) }
+                    .fillMaxWidth())
     } else {
-        Text(text = "Image loading")
+        Text(text = "Image loading",modifier = Modifier
+            .offset { IntOffset(pos, 0) })
     }
 }
