@@ -1,6 +1,7 @@
 package com.github.opfromthestart.openfunny
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.os.Build
@@ -13,17 +14,16 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.SwipeableState
-import androidx.compose.material.Text
-import androidx.compose.material.swipeable
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
+import androidx.compose.material.SwipeableState
+import androidx.compose.material.Text
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
+import androidx.compose.material.swipeable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -42,7 +43,8 @@ import com.github.opfromthestart.openfunny.ui.theme.Purple80
 import com.github.opfromthestart.openfunny.ui.theme.PurpleGrey40
 import com.github.opfromthestart.openfunny.ui.theme.PurpleGrey80
 import com.github.opfromthestart.openfunny.ui.theme.Typography
-import kotlinx.coroutines.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -52,12 +54,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
-            MainActivity.bounds = windowManager.currentWindowMetrics.bounds
+            bounds = windowManager.currentWindowMetrics.bounds
         } else {
             val disp = windowManager.defaultDisplay
-            MainActivity.bounds = Rect(0, 0, disp.width, disp.height)
+            bounds = Rect(0, 0, disp.width, disp.height)
         }
-        println(MainActivity.bounds)
+        println(bounds)
         setContent { OpenFunnyMain() }
     }
 
@@ -86,8 +88,6 @@ onSurface = Color(0xFF1C1B1F),
 @Composable
 fun OpenFunnyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -120,7 +120,7 @@ fun OpenFunnyMain() {
         GlobalScope.async {
             Scraper.initImages {
                 Log.i(null, "$it images loaded")
-                start = false;
+                start = false
                 images = it
             }
         }
@@ -152,14 +152,14 @@ fun ImageCarousel() {
     val curInd = remember {
         SwipeableState(0, tween())
     }
-    var curImg by remember {
-        mutableStateOf(ByteArray(0))
+    var curImg: ImageBitmap? by remember {
+        mutableStateOf(null)
     }
-    var curImg_p by remember {
-        mutableStateOf(ByteArray(0))
+    var curImg_p: ImageBitmap? by remember {
+        mutableStateOf(null)
     }
-    var curImg_n by remember {
-        mutableStateOf(ByteArray(0))
+    var curImg_n: ImageBitmap? by remember {
+        mutableStateOf(null)
     }
 
     val imgs = 1000
@@ -173,38 +173,47 @@ fun ImageCarousel() {
             GlobalScope.async {
                 Scraper.getImage(curInd.currentValue) {
                     Log.i("OpenFunny", "cur img gotten")
+                    var b = BitmapFactory.decodeByteArray(it, 0, it.size)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    val ib = b?.asImageBitmap()
                     if (curInd.currentValue%3 == 0) {
-                        curImg = it
+                        curImg = ib
                     }
                     else if (curInd.currentValue%3 == 1) {
-                        curImg_n = it
+                        curImg_n = ib
                     }
                     else if (curInd.currentValue%3 == 2) {
-                        curImg_p = it
+                        curImg_p = ib
                     }
                 }
                 Scraper.getImage(curInd.currentValue+1) {
                     Log.i("OpenFunny", "cur imgn gotten")
+                    var b = BitmapFactory.decodeByteArray(it, 0, it.size)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    val ib = b?.asImageBitmap()
                     if (curInd.currentValue%3 == 2) {
-                        curImg = it
+                        curImg = ib
                     }
                     else if (curInd.currentValue%3 == 0) {
-                        curImg_n = it
+                        curImg_n = ib
                     }
                     else if (curInd.currentValue%3 == 1) {
-                        curImg_p = it
+                        curImg_p = ib
                     }
                 }
                 Scraper.getImage(curInd.currentValue-1) {
                     Log.i("OpenFunny", "cur imgp gotten")
+                    var b = BitmapFactory.decodeByteArray(it, 0, it.size)
+                    b = Bitmap.createBitmap(b, 0, 0, b.width, b.height-20)
+                    val ib = b?.asImageBitmap()
                     if (curInd.currentValue%3 == 1) {
-                        curImg = it
+                        curImg = ib
                     }
                     else if (curInd.currentValue%3 == 2) {
-                        curImg_n = it
+                        curImg_n = ib
                     }
                     else if (curInd.currentValue%3 == 0) {
-                        curImg_p = it
+                        curImg_p = ib
                     }
                 }
             }
@@ -213,16 +222,10 @@ fun ImageCarousel() {
 
     val posMap = (0 until imgs).map { -it *sizePx to it }.toMap()
 
-    if (curImg.isNotEmpty()) {
-        var b = BitmapFactory.decodeByteArray(curImg, 0, curImg.size)
-        val ib = b?.asImageBitmap()
-        b = BitmapFactory.decodeByteArray(curImg_p, 0, curImg_p.size)
-        val ibp = b?.asImageBitmap()
-        b = BitmapFactory.decodeByteArray(curImg_n, 0, curImg_n.size)
-        val ibn = b?.asImageBitmap()
-        if (ib != null && ibp != null && ibn != null) {
+    if (curImg != null) {
+        if (curImg_p != null && curImg_n != null) {
             Image(
-                bitmap = ibp,
+                bitmap = curImg_p!!,
                 contentDescription = "thing",
                 modifier = Modifier
                     .swipeable(
@@ -237,7 +240,7 @@ fun ImageCarousel() {
                         )
                     })
                 Image(
-                    bitmap = ib,
+                    bitmap = curImg!!,
                     contentDescription = "thing",
                     modifier = Modifier
                         .swipeable(
@@ -252,7 +255,7 @@ fun ImageCarousel() {
                             )
                         })
                 Image(
-                    bitmap = ibn,
+                    bitmap = curImg_n!!,
                     contentDescription = "thing",
                     modifier = Modifier
                         .swipeable(
@@ -262,8 +265,8 @@ fun ImageCarousel() {
                         )
                         .offset { IntOffset(((curInd.offset.value ) % (3 * sizePx)+ sizePx).toInt(), 0) })
 
-        } else if (ib != null || ibn != null) {
-            val ibv = ib ?: ibn // This guarantees it is not null
+        } else {
+            val ibv = curImg ?: curImg_n // This guarantees it is not null
             Image(
                 bitmap = ibv!!,
                 contentDescription = "thing",
@@ -279,10 +282,6 @@ fun ImageCarousel() {
                             0
                         )
                     })
-        }
-            else
-        {
-            Text(text = "Image not found")
         }
     } else {
         Text(text = "Image loading")
