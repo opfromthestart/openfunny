@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use jni::objects::{JObject, JString, JValue};
-use jni::sys::jint;
+use jni::objects::{JObject, JString, JValue, JValueGen};
+use jni::sys::{jint, jstring};
 use jni::JNIEnv;
 use json::JsonValue;
 use once_cell::sync::Lazy;
@@ -353,4 +353,65 @@ pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_getComments<'
         }
     }
     // log!(env, "what??");
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "C" fn Java_com_github_opfromthestart_openfunny_Scraper_text<'local>(
+    mut env: JNIEnv<'local>,
+    _obj: JObject,
+    text_str: JString,
+    composer: JObject,
+    changed: jint,
+) {
+    // log!(env, format!("test text"));
+    // let s = env.new_string("lol").unwrap();
+    let my_m = env.get_static_field(
+        "androidx/compose/ui/Modifier",
+        "Companion",
+        "Landroidx/compose/ui/Modifier$Companion;",
+    );
+    let color = JValue::Long(0x7f20202000000000 - 0x7fffffffffffffff - 1);
+    log!(env, format!("{color:?}"));
+    let my_m = match my_m {
+        Ok(m) => match m {
+            JValueGen::Object(o) => o,
+            _ => {
+                return;
+            }
+        },
+        Err(e) => {
+            log!(env, format!("No mod: {e:?}"));
+            return;
+        }
+    };
+    let my_b = env.call_static_method("androidx/compose/foundation/BackgroundKt","background-bw27NRU$default" ,"(Landroidx/compose/ui/Modifier;JLandroidx/compose/ui/graphics/Shape;ILjava/lang/Object;)Landroidx/compose/ui/Modifier;" ,&[JValue::Object(&my_m), color, JValue::Object(&JObject::null()), JValue::Int(2), JValue::Object(&JObject::null())] ).unwrap_or_else(|e| {
+        log!(env, format!("No bg{e:?}"));
+        JValueGen::Void
+    });
+    let JValueGen::Object(my_b) = my_b else {
+        return;
+    };
+    let my_s = env
+        .call_static_method(
+            "androidx/compose/foundation/layout/SizeKt",
+            "fillMaxWidth$default",
+            "(Landroidx/compose/ui/Modifier;FILjava/lang/Object;)Landroidx/compose/ui/Modifier;",
+            &[
+                JValue::Object(&my_b),
+                JValue::Float(1.0),
+                JValue::Int(2),
+                JValue::Object(&JObject::null()),
+            ],
+        )
+        .unwrap_or_else(|e| {
+            log!(env, format!("No fill{e:?}"));
+            JValueGen::Void
+        });
+    let JValueGen::Object(my_s) = my_s else {
+        return;
+    };
+    let er = env.call_static_method("androidx/compose/material/TextKt", "Text--4IGK_g", "(Ljava/lang/String;Landroidx/compose/ui/Modifier;JJLandroidx/compose/ui/text/font/FontStyle;Landroidx/compose/ui/text/font/FontWeight;Landroidx/compose/ui/text/font/FontFamily;JLandroidx/compose/ui/text/style/TextDecoration;Landroidx/compose/ui/text/style/TextAlign;JIZIILkotlin/jvm/functions/Function1;Landroidx/compose/ui/text/TextStyle;Landroidx/compose/runtime/Composer;III)V",
+        &[JValue::Object(&unsafe {JObject::from_raw(text_str.as_raw())}), JValue::Object(&unsafe {JObject::from_raw(my_s.as_raw())}), JValue::Long(0), JValue::Long(0), JValue::Object(&JObject::null()), JValue::Object(&JObject::null()), JValue::Object(&JObject::null()), JValue::Long(0), JValue::Object(&JObject::null()), JValue::Object(&JObject::null()), JValue::Long(0), JValue::Int(0), JValue::Bool(0), JValue::Int(0), JValue::Int(0), JValue::Object(&JObject::null()), JValue::Object(&JObject::null()), JValue::Object(&composer), JValue::Int(0), JValue::Int(0), JValue::Int(131068)]);
+    // log!(env, format!("test: {er:?}"));
 }

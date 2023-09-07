@@ -261,10 +261,7 @@ fun ImageCarousel() {
         map = posMap,
         swipe = curInd
     )
-    var mod =Modifier
-        .background(MaterialTheme.colors.background)
-        .fillMaxWidth()
-        Column(modifier = Modifier.offset {
+    Column(modifier = Modifier.offset {
         IntOffset(
             ((curInd.offset.value) % (sizePx)).toInt(),
             2000 + comment.offset.value.toInt()
@@ -272,10 +269,12 @@ fun ImageCarousel() {
     }
         ) {
         for (i in comments) {
-            Text(
-                i,
-                modifier = mod
-            )
+//            Log.i("test", "comment")
+            Scraper.text(s = i)
+//            Text(
+//                i,
+//                modifier = mod
+//            )
         }
     }
 }
